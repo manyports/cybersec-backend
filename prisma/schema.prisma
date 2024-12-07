@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "yerassyl"
+  url      = env("DATABASE_URL")
+}
+
+model Vulnerability {
+  id                String   @id
+  title            String
+  description      String   @db.Text
+  published        DateTime
+  severity         String
+  source           String
+  cve_id           String?
+  cvss_score       Float?
+  cvss_vector      String?
+  affected_packages Json
+  references       Json
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([source])
+}
