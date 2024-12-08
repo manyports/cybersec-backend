@@ -1,19 +1,30 @@
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import { Vulnerability } from '../types';
+import { AxiosError } from 'axios';
 
 export class GithubParserService {
   private readonly baseUrl = 'https://api.github.com/advisories';
   private readonly headers = {
     'Accept': 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28'
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
   };
 
   async fetchVulnerabilities(): Promise<Vulnerability[]> {
     try {
-      const response = await axios.get(this.baseUrl, { headers: this.headers });
+      const response = await axios.get(this.baseUrl, {
+        headers: this.headers
+      });
       return response.data.map(this.mapGithubToVulnerability);
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 403) {
+          const resetTime = Number(error.response.headers['x-ratelimit-reset']);
+          const waitTime = (resetTime * 1000) - Date.now();
+          throw new Error(`Rate limit exceeded. Resets in ${Math.ceil(waitTime / 1000)} seconds`);
+        }
+      }
       logger.error('Error fetching from GitHub:', error);
       throw error;
     }
